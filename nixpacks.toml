@@ -1,39 +1,28 @@
 # nixpacks.toml
-# Konfigurasi eksplisit untuk Nixpacks agar mengenali Python dan Node.js
 
-# Pastikan hanya python3 dan nodejs yang diinstal di level sistem
-packages = ["nodejs", "python3"]
+# PERUBAHAN DI SINI: Gunakan nama paket Node.js yang lebih spesifik.
+# Pilih versi yang sesuai dengan versi Node.js lokal Anda (misal, 18, 20, atau 22).
+# Jika Anda menggunakan v22.x, maka 'nodejs-22_x' adalah yang paling cocok.
+packages = ["nodejs-20_x", "python3"]
 
 [phases.setup]
-# Fase ini berjalan pertama kali untuk menyiapkan lingkungan dan menginstal dependensi inti.
 commands = [
-    # 1. Buat Virtual Environment Python di dalam proyek Anda (.venv)
     "python3 -m venv .venv",
-    # 2. Aktifkan Virtual Environment dan upgrade pip-nya (praktik yang baik)
     ". .venv/bin/activate && pip install --upgrade pip",
-    # 3. Aktifkan Virtual Environment dan instal dependensi Python dari requirements.txt
     ". .venv/bin/activate && pip install -r requirements.txt",
-    # 4. Navigasi ke frontend dan instal dependensi Node.js
+    # Perintah npm install tetap sama, tapi sekarang npm diharapkan ada di PATH
     "cd trapesium-frontend && npm install --no-fund --no-audit && cd ..",
 ]
 
 [phases.build]
-# Fase ini membangun aset aplikasi (build React, collectstatic Django).
 commands = [
-    # 1. Navigasi ke frontend dan bangun aplikasi React
     "cd trapesium-frontend && npm run build && cd ..",
-    # 2. Aktifkan Virtual Environment dan kumpulkan file statis Django (termasuk hasil build React)
-    # Penting: python manage.py sekarang akan menggunakan python dari .venv
     ". .venv/bin/activate && python manage.py collectstatic --noinput",
 ]
 
 [start]
-# Fase ini mendefinisikan perintah untuk memulai server aplikasi.
-# Aktifkan Virtual Environment dan kemudian jalankan gunicorn.
-# Penting: gunicorn sekarang akan menggunakan python dari .venv
 cmd = ". .venv/bin/activate && gunicorn metnumtrapesium.wsgi:application --bind 0.0.0.0:$PORT"
 
 [environments]
-# Atur variabel lingkungan untuk aplikasi.
 DJANGO_SETTINGS_MODULE = "metnumtrapesium.settings"
 PORT = "$PORT"
