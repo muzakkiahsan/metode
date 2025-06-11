@@ -14,4 +14,4 @@ cmds = [
 ]
 
 [start]
-cmd = '. /opt/venv/bin/activate && python app.py'
+cmd = "gunicorn metnumtrapesium.wsgi:application"
