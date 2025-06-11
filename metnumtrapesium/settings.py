@@ -75,7 +75,7 @@ ROOT_URLCONF = 'metnumtrapesium.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [REACT_BUILD_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
