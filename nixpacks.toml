@@ -1,34 +1,18 @@
 # nixpacks.toml
-
-# Mendefinisikan paket sistem yang akan diinstal oleh Nixpacks.
-packages = ["nodejs-22_x", "python3"]
-
-# Variabel lingkungan global yang akan tersedia di seluruh fase build dan run.
-[environments]
-DJANGO_SETTINGS_MODULE = "metnumtrapesium.settings"
-PORT = "$PORT"
-
 [phases.setup]
-# Fase 'setup' digunakan untuk mempersiapkan lingkungan Python.
-commands = [
-    "python3 -m venv .venv",
-    ". .venv/bin/activate && pip install --upgrade pip",
-    ". .venv/bin/activate && pip install -r requirements.txt",
+nixPkgs = ['python312', 'nodejs_22', 'nodePackages.npm']
+
+[phases.install]
+cmds = [
+  'pip install -r requirements.txt',
+  'cd trapesium-frontend && npm ci --only=production'
 ]
 
 [phases.build]
-# Fase 'build' adalah tempat Anda menjalankan perintah untuk membangun aplikasi.
-commands = [
-    # Memanggil skrip build frontend Anda.
-    # Skrip ini sekarang akan secara mandiri menemukan dan mengatur PATH untuk 'npm'.
-    "bash trapesium-frontend/build_frontend.sh",
-
-    # Setelah frontend selesai dibangun, jalankan `collectstatic` Django.
-    # Penting untuk mengaktifkan virtual environment Python terlebih dahulu.
-    ". .venv/bin/activate && python manage.py collectstatic --noinput",
+cmds = [
+  'cd trapesium-frontend && npm run build',
+  'python manage.py collectstatic --noinput'
 ]
 
 [start]
-# Perintah untuk menjalankan aplikasi Anda setelah build selesai.
-# Mengaktifkan virtual environment dan menjalankan Gunicorn.
-cmd = ". .venv/bin/activate && gunicorn metnumtrapesium.wsgi:application --bind 0.0.0.0:$PORT"
+cmd = 'python manage.py runserver 0.0.0.0:$PORT'
