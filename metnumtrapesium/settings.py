@@ -15,6 +15,7 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+REACT_BUILD_DIR = os.path.join(BASE_DIR, 'trapesium-frontend', 'build')
 
 
 # Quick-start development settings - unsuitable for production
@@ -61,8 +62,15 @@ MIDDLEWARE = [
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_DIRS = [
+    REACT_BUILD_DIR,
+    # Jika Anda punya folder statis Django lainnya (misal, global_static/)
+    # os.path.join(BASE_DIR, 'global_static'),
+]
 
 ROOT_URLCONF = 'metnumtrapesium.urls'
+
+
 
 TEMPLATES = [
     {
