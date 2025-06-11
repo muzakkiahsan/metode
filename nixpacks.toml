@@ -1,52 +1,34 @@
 # nixpacks.toml
 
-# Pastikan hanya nodejs dan python3 diinstal di level sistem
-# Menggunakan penamaan paket yang lebih spesifik
-# Pastikan versi nodejs yang Anda pilih (e.g., nodejs-22_x) memang tersedia di Nix.
-# nodejs-22_x adalah konvensi yang baik untuk Nixpacks.
+# Mendefinisikan paket sistem yang akan diinstal oleh Nixpacks.
 packages = ["nodejs-22_x", "python3"]
 
-# Variabel Lingkungan Global yang akan tersedia di seluruh fase build dan run
+# Variabel lingkungan global yang akan tersedia di seluruh fase build dan run.
 [environments]
 DJANGO_SETTINGS_MODULE = "metnumtrapesium.settings"
 PORT = "$PORT"
-# RAILWAY_NIXPACKS_BUILD_COMMAND = "bash trapesium-frontend/build_frontend.sh && python manage.py collectstatic --noinput"
-# ^ Anda bisa menggunakan ini sebagai alternatif untuk [phases.build] commands jika hanya ada satu baris.
-# Namun, karena Anda memiliki beberapa langkah, kita akan tetap pakai [phases.build]
 
 [phases.setup]
-# Perintah setup harus fokus pada persiapan lingkungan Python (venv, pip install).
-# Memuat PATH dari Nix profile.d di sini adalah ide yang bagus untuk memastikan PATH benar untuk semua perintah berikutnya.
-# Ini lebih reliable daripada mencoba .profile atau .bashrc yang mungkin tidak ada/berfungsi.
+# Fase 'setup' digunakan untuk mempersiapkan lingkungan Python.
 commands = [
-    # Inisialisasi PATH dengan Nix profile.d. Ini adalah langkah krusial.
-    # Ini memastikan binari dari paket Nix (seperti nodejs) ada di PATH.
-    # Gunakan 'source' atau '.' untuk menjalankan skrip di shell saat ini.
-    "if [ -f /root/.nix-profile/etc/profile.d/nix.sh ]; then source /root/.nix-profile/etc/profile.d/nix.sh; fi",
-    "if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix.sh ]; then source /nix/var/nix/profiles/default/etc/profile.d/nix.sh; fi",
-    # Kedua path di atas sering menjadi lokasi file nix.sh. Coba keduanya.
-
     "python3 -m venv .venv",
     ". .venv/bin/activate && pip install --upgrade pip",
     ". .venv/bin/activate && pip install -r requirements.txt",
 ]
 
 [phases.build]
+# Fase 'build' adalah tempat Anda menjalankan perintah untuk membangun aplikasi.
 commands = [
-    # Penting: Setiap fase RUN adalah shell baru, jadi PATH mungkin perlu diatur ulang
-    # Jika `source /root/.nix-profile/etc/profile.d/nix.sh` di `setup` tidak bertahan,
-    # kita perlu menyertakannya di sini juga. Tapi umumnya harusnya bertahan untuk fase `build`.
-    # Mari kita coba TANPA pengulangan dulu, karena itu adalah harapan dari Nixpacks.
-    # Jika masih gagal, tambahkan baris `if [ -f ... ] then source ... fi` di sini juga.
-
-    # Panggil skrip build frontend yang seharusnya sekarang dapat menemukan 'npm'.
-    # Pastikan skrip ini (`build_frontend.sh`) melakukan `npm install` dan `npm run build`.
+    # Memanggil skrip build frontend Anda.
+    # Skrip ini sekarang akan secara mandiri menemukan dan mengatur PATH untuk 'npm'.
     "bash trapesium-frontend/build_frontend.sh",
 
-    # Setelah frontend dibangun, jalankan collectstatic Django
-    # Pastikan venv aktif untuk menemukan `python` dan `manage.py`.
+    # Setelah frontend selesai dibangun, jalankan `collectstatic` Django.
+    # Penting untuk mengaktifkan virtual environment Python terlebih dahulu.
     ". .venv/bin/activate && python manage.py collectstatic --noinput",
 ]
 
 [start]
+# Perintah untuk menjalankan aplikasi Anda setelah build selesai.
+# Mengaktifkan virtual environment dan menjalankan Gunicorn.
 cmd = ". .venv/bin/activate && gunicorn metnumtrapesium.wsgi:application --bind 0.0.0.0:$PORT"
