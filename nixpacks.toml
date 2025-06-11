@@ -7,7 +7,7 @@ packages = ["nodejs", "python3"] # Pastikan kedua paket ini diinstal
 # Perintah setup yang dijalankan untuk menginstal dependensi
 # Ini akan dijalankan sebelum build atau start commands
 commands = [
-    "pip install -r requirements.txt",
+    "python3 -m pip install -r requirements.txt", 
     "cd trapesium-frontend && npm install --no-fund --no-audit && cd ..", # --no-fund --no-audit untuk mengurangi output
 ]
 
@@ -15,7 +15,7 @@ commands = [
 # Perintah build yang dijalankan setelah setup
 commands = [
     "cd trapesium-frontend && npm run build && cd ..",
-    "python manage.py collectstatic --noinput",
+    "python3 -m manage.py collectstatic --noinput", 
 ]
 
 [start]
