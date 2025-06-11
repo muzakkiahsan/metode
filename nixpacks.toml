@@ -1,22 +1,19 @@
 # nixpacks.toml
 
-# PERUBAHAN DI SINI: Gunakan nama paket Node.js yang lebih spesifik.
-# Pilih versi yang sesuai dengan versi Node.js lokal Anda (misal, 18, 20, atau 22).
-# Jika Anda menggunakan v22.x, maka 'nodejs-22_x' adalah yang paling cocok.
-packages = ["nodejs-20_x", "python3"]
+packages = ["nodejs-22_x", "python3"]
 
 [phases.setup]
 commands = [
     "python3 -m venv .venv",
     ". .venv/bin/activate && pip install --upgrade pip",
     ". .venv/bin/activate && pip install -r requirements.txt",
-    # Perintah npm install tetap sama, tapi sekarang npm diharapkan ada di PATH
-    "cd trapesium-frontend && npm install --no-fund --no-audit && cd ..",
+    # PERUBAHAN DI SINI: Panggil script baru
+    "bash trapesium-frontend/build_frontend.sh",
 ]
 
 [phases.build]
 commands = [
-    "cd trapesium-frontend && npm run build && cd ..",
+    # PERUBAHAN DI SINI: Hapus perintah npm build, sudah dipindahkan ke script
     ". .venv/bin/activate && python manage.py collectstatic --noinput",
 ]
 
