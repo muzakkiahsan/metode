@@ -1,7 +1,7 @@
 # nixpacks.toml
 # Konfigurasi eksplisit untuk Nixpacks agar mengenali Python dan Node.js
 
-packages = ["nodejs", "python3"] # Pastikan kedua paket ini diinstal
+packages = ["nodejs", "python3", "pip"] 
 
 [phases.setup]
 # Perintah setup yang dijalankan untuk menginstal dependensi
