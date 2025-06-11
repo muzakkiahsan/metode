@@ -1,6 +1,6 @@
 # nixpacks.toml
 [phases.setup]
-nixPkgs = ['python312', 'nodejs_22', 'nodePackages.npm']
+nixPkgs = ['python312', 'nodejs_20', 'nodePackages.npm']
 
 [phases.install]
 cmds = [
