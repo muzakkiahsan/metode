@@ -4,7 +4,7 @@
 if ! command -v node &> /dev/null; then
     echo "Node.js tidak ditemukan, mencoba menginstall..."
     # Untuk nixpacks, gunakan nix-env
-    nix-env -iA nixpkgs.nodejs_18 nixpkgs.nodePackages.npm
+    nix-env -iA nixpkgs.nodejs_20 nixpkgs.nodePackages.npm
 fi
 
 # Cek lagi setelah instalasi
