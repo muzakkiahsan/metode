@@ -1,36 +1,39 @@
 # nixpacks.toml
 # Konfigurasi eksplisit untuk Nixpacks agar mengenali Python dan Node.js
 
-packages = ["nodejs", "python3" ] 
+# Pastikan hanya python3 dan nodejs yang diinstal di level sistem
+packages = ["nodejs", "python3"]
 
 [phases.setup]
-# Perintah setup yang dijalankan untuk menginstal dependensi
-# Ini akan dijalankan sebelum build atau start commands
+# Fase ini berjalan pertama kali untuk menyiapkan lingkungan dan menginstal dependensi inti.
 commands = [
-    # Cek apakah pip sudah ada, jika tidak, unduh dan instal
-    "if ! python3 -c \"import pip\" &> /dev/null; then curl -sS https://bootstrap.pypa.io/get-pip.py | python3; fi",
-    "python3 -m pip install -r requirements.txt", # Sekarang ini seharusnya berfungsi
+    # 1. Buat Virtual Environment Python di dalam proyek Anda (.venv)
+    "python3 -m venv .venv",
+    # 2. Aktifkan Virtual Environment dan upgrade pip-nya (praktik yang baik)
+    ". .venv/bin/activate && pip install --upgrade pip",
+    # 3. Aktifkan Virtual Environment dan instal dependensi Python dari requirements.txt
+    ". .venv/bin/activate && pip install -r requirements.txt",
+    # 4. Navigasi ke frontend dan instal dependensi Node.js
     "cd trapesium-frontend && npm install --no-fund --no-audit && cd ..",
 ]
 
 [phases.build]
-# Perintah build yang dijalankan setelah setup
+# Fase ini membangun aset aplikasi (build React, collectstatic Django).
 commands = [
+    # 1. Navigasi ke frontend dan bangun aplikasi React
     "cd trapesium-frontend && npm run build && cd ..",
-    "python3 -m manage.py collectstatic --noinput", 
+    # 2. Aktifkan Virtual Environment dan kumpulkan file statis Django (termasuk hasil build React)
+    # Penting: python manage.py sekarang akan menggunakan python dari .venv
+    ". .venv/bin/activate && python manage.py collectstatic --noinput",
 ]
 
 [start]
-# Perintah untuk memulai aplikasi
-cmd = "gunicorn metnumtrapesium.wsgi:application --bind 0.0.0.0:$PORT"
+# Fase ini mendefinisikan perintah untuk memulai server aplikasi.
+# Aktifkan Virtual Environment dan kemudian jalankan gunicorn.
+# Penting: gunicorn sekarang akan menggunakan python dari .venv
+cmd = ". .venv/bin/activate && gunicorn metnumtrapesium.wsgi:application --bind 0.0.0.0:$PORT"
 
 [environments]
-# Variabel lingkungan yang diperlukan
-# Pastikan DJANGO_SETTINGS_MODULE diatur jika tidak di manage.py
+# Atur variabel lingkungan untuk aplikasi.
 DJANGO_SETTINGS_MODULE = "metnumtrapesium.settings"
-
-# Atur PORT sesuai standar Railway
 PORT = "$PORT"
-
-# Jika Anda perlu variabel DB_URL
-# DATABASE_URL = "$DATABASE_URL"
