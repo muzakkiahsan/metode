@@ -2,97 +2,51 @@
 
 # Pastikan hanya nodejs dan python3 diinstal di level sistem
 # Menggunakan penamaan paket yang lebih spesifik
+# Pastikan versi nodejs yang Anda pilih (e.g., nodejs-22_x) memang tersedia di Nix.
+# nodejs-22_x adalah konvensi yang baik untuk Nixpacks.
 packages = ["nodejs-22_x", "python3"]
 
 # Variabel Lingkungan Global yang akan tersedia di seluruh fase build dan run
 [environments]
-# Ini adalah langkah kunci: secara eksplisit tambahkan jalur binari Node.js ke PATH
-# Nixpacks seringkali menempatkan binari di direktori seperti /nix/store/hash-paket/bin
-# Kita akan mencoba menemukan jalur ini secara dinamis atau mengandalkan Nixpacks.
-# Jika `npm` tidak ditemukan, berarti PATH di Docker build context tidak lengkap.
-# Kita akan memperbaikinya dengan menambahkan PATH dari Nixpacks' default profile.
-# Kadang-kadang /root/.nix-profile/bin sudah ada, tapi mungkin ada di lokasi lain.
-
-# Coba ini:
-# RAILWAY_NODE_BIN_PATH = "/usr/local/bin" # Ini kalau pakai Docker image biasa
-# Untuk Nixpacks, binari Node.js biasanya ada di /nix/store/hash-nodejs-version/bin
-
-# Mari kita buat ini lebih kokoh dengan menambahkan perintah export PATH di awal script
-# Ini adalah cara terakhir untuk memastikan PATH sudah benar di setiap RUN command.
-
-# Ini akan dimasukkan ke dalam PATH untuk semua perintah berikutnya
-# Perintah-perintah berikut akan memastikan bahwa PATH yang benar diset
-# sebelum perintah npm dieksekusi.
-
 DJANGO_SETTINGS_MODULE = "metnumtrapesium.settings"
 PORT = "$PORT"
-
+# RAILWAY_NIXPACKS_BUILD_COMMAND = "bash trapesium-frontend/build_frontend.sh && python manage.py collectstatic --noinput"
+# ^ Anda bisa menggunakan ini sebagai alternatif untuk [phases.build] commands jika hanya ada satu baris.
+# Namun, karena Anda memiliki beberapa langkah, kita akan tetap pakai [phases.build]
 
 [phases.setup]
-# Perintah ini akan menambahkan jalur binari Node.js ke PATH secara manual
-# Ini perlu dilakukan di setiap perintah RUN yang membutuhkan 'npm'
-# Karena ini di 'setup', PATH yang diset di sini harusnya bertahan.
-
-# Namun, Nixpacks memiliki cara sendiri untuk mengatur PATH.
-# Mari kita coba menggunakan 'build.sh' atau 'setup.sh' yang dieksekusi oleh Nixpacks.
-
-# Jika PATH dari `packages` tidak otomatis terkonfigurasi untuk `RUN` commands:
-# Kita harus membuatnya secara eksplisit di awal setiap RUN command, atau di suatu tempat yang bertahan.
-# `profile.d` scripts atau `setup.sh` yang dijalankan oleh Nixpacks bisa membantu.
-
-# Coba tambahkan script init yang menginisialisasi PATH
-# Ini adalah hack, tapi seringkali bekerja jika PATH bermasalah
+# Perintah setup harus fokus pada persiapan lingkungan Python (venv, pip install).
+# Memuat PATH dari Nix profile.d di sini adalah ide yang bagus untuk memastikan PATH benar untuk semua perintah berikutnya.
+# Ini lebih reliable daripada mencoba .profile atau .bashrc yang mungkin tidak ada/berfungsi.
 commands = [
-    # Coba inisialisasi PATH secara eksplisit dengan Nix profile
-    "if [ -f /etc/profile ]; then . /etc/profile; fi",
-    "if [ -f ~/.profile ]; then . ~/.profile; fi",
-    "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi", # Memuat bashrc untuk beberapa lingkungan
-    "if [ -f /root/.nix-profile/etc/profile.d/nix.sh ]; then . /root/.nix-profile/etc/profile.d/nix.sh; fi", # Inisialisasi Nix PATH
+    # Inisialisasi PATH dengan Nix profile.d. Ini adalah langkah krusial.
+    # Ini memastikan binari dari paket Nix (seperti nodejs) ada di PATH.
+    # Gunakan 'source' atau '.' untuk menjalankan skrip di shell saat ini.
+    "if [ -f /root/.nix-profile/etc/profile.d/nix.sh ]; then source /root/.nix-profile/etc/profile.d/nix.sh; fi",
+    "if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix.sh ]; then source /nix/var/nix/profiles/default/etc/profile.d/nix.sh; fi",
+    # Kedua path di atas sering menjadi lokasi file nix.sh. Coba keduanya.
 
     "python3 -m venv .venv",
     ". .venv/bin/activate && pip install --upgrade pip",
     ". .venv/bin/activate && pip install -r requirements.txt",
-    "bash trapesium-frontend/build_frontend.sh", # Memanggil script yang sekarang diharapkan memiliki PATH yang benar
 ]
 
 [phases.build]
 commands = [
     # Penting: Setiap fase RUN adalah shell baru, jadi PATH mungkin perlu diatur ulang
-    # Ini adalah asumsi jika Nixpacks tidak mempertahankan PATH secara otomatis
-    "if [ -f /root/.nix-profile/etc/profile.d/nix.sh ]; then . /root/.nix-profile/etc/profile.d/nix.sh; fi", # Re-inisialisasi Nix PATH
-    "cd trapesium-frontend && npm run build && cd ..", # Ini sudah di dalam build_frontend.sh, jadi ini salah
+    # Jika `source /root/.nix-profile/etc/profile.d/nix.sh` di `setup` tidak bertahan,
+    # kita perlu menyertakannya di sini juga. Tapi umumnya harusnya bertahan untuk fase `build`.
+    # Mari kita coba TANPA pengulangan dulu, karena itu adalah harapan dari Nixpacks.
+    # Jika masih gagal, tambahkan baris `if [ -f ... ] then source ... fi` di sini juga.
 
-    # Ini adalah sisa dari build_frontend.sh. Yang perlu adalah collectstatic
-    ". .venv/bin/activate && python manage.py collectstatic --noinput", # Memerlukan PATH untuk python di venv
+    # Panggil skrip build frontend yang seharusnya sekarang dapat menemukan 'npm'.
+    # Pastikan skrip ini (`build_frontend.sh`) melakukan `npm install` dan `npm run build`.
+    "bash trapesium-frontend/build_frontend.sh",
+
+    # Setelah frontend dibangun, jalankan collectstatic Django
+    # Pastikan venv aktif untuk menemukan `python` dan `manage.py`.
+    ". .venv/bin/activate && python manage.py collectstatic --noinput",
 ]
 
 [start]
 cmd = ". .venv/bin/activate && gunicorn metnumtrapesium.wsgi:application --bind 0.0.0.0:$PORT"
-
-# Tambahan: Jika nixpacks.toml ini masih gagal,
-# kita perlu memastikan bahwa `npm` dieksekusi dari lokasi absolut.
-# Ini melibatkan menemukan hash store Nix untuk `nodejs-22_x`.
-# Ini sangat rumit.
-
-# Coba ini dulu:
-
-# Remove redundant build_frontend.sh call in setup if build_frontend.sh has npm install and build.
-# The user wants to run the script. The script failed because npm was not found.
-# The PATH output from build_frontend.sh is the key.
-
-# The path in the log: `/root/.nix-profile/bin` *should* contain `npm` if `nodejs-22_x` is installed there.
-# It seems it's not.
-
-# Let's try this more direct way to ensure npm is in PATH for the whole phase.
-# This might involve using a .bashrc or .profile file that Nixpacks sources.
-
-# A common Nixpacks solution for this exact problem:
-# Add a .profile file or define build packs explicitly.
-# Railway's own docs suggest using `RAILWAY_NIXPACKS_BUILD_COMMAND`
-
-# The `PATH` you provided is missing the actual Node.js installation path.
-# `packages = ["nodejs-22_x"]` should *implicitly* add it. If it doesn't, we are in a tough spot.
-
-# Final attempt for `nixpacks.toml` to fix `npm: command not found` based on typical Nixpacks issues:
-# Use explicit PATH addition for Node.js bin directory
-# This assumes the Node.js package is put in a standard /nix/store/<hash>-nodejs-XX_x/bin location
